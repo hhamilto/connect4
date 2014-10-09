@@ -1,0 +1,130 @@
+var _ = require('lodash');
+var util = require('util');
+//board = 7x6 arr
+
+var EMPTY = 0, RED = 1, BLACK = 2, PLAYABLE=0;
+
+// column, row (picked thatway for playability) bottom of board is 0, and left of board is 0;
+var newBoard = function(){
+	return _.times(7, function(){ return [];});
+}
+
+var verticalWins = (function(){
+	var toRet = [];
+	for(var i = 0; i < 7; i++){
+		for(var j = 0; j <= 6-4; j++){
+			var win = [];
+			for(var k = j; k < j+4; k++){
+				win.push([i,k]);
+			}
+			toRet.push(win);
+		}
+	}
+	return toRet;
+})();
+
+var horizontalWins = (function(){
+	var toRet = [];
+	for(var j = 0; j < 6; j++){
+		for(var i = 0; i <= 7-4; i++){
+			var win = [];
+			for(var k = i; k < i+4; k++){
+				win.push([k,j]);
+			}
+			toRet.push(win);
+		}
+	}
+	return toRet;
+})();
+
+
+var diagonalWins = (function(){
+	var toRet = [];
+	for(var i = 0; i <= 7-4; i++){
+		for(var j = 0; j <= 6-4; j++){
+			var win = [];
+			for(var k = 0; k < 4; k++){
+				win.push([i+k,j+k]);
+			}
+			toRet.push(win);
+		}
+	}
+	for(var i = 0; i <= 7-4; i++){
+		for(var j = 5; j >= 3; j--){
+			var win = [];
+			for(var k = 0; k < 4; k++){
+				win.push([i+k,j-k]);
+			}
+			toRet.push(win);
+		}
+	}
+	return toRet;
+})();
+var allWins = [].concat(horizontalWins, verticalWins, diagonalWins);
+//console.log("allWins made");
+
+
+var getState = function(board){
+	outer: for(var i = 0; i < allWins.length; i++){
+		win = allWins[i];
+		var color = board[win[0][0]][win[0][1]];
+		if(color == undefined)
+			continue;
+		for(var j = 0; j <win.length; j++){
+			if(board[win[j][0]][win[j][1]] != color){
+				continue outer;
+			}
+		}
+		return color;
+	}
+	return PLAYABLE;
+}
+
+var copyBoard = function(board){
+	return board.map(function(col){
+		return col.map(_.identity);
+	})
+}
+
+var gameTree = {
+	board: newBoard(),
+	state: PLAYABLE,
+	children: [],
+	toMove: RED,
+}
+
+var play = function(node){
+	node.state = getState(node.board);
+	if(node.state != PLAYABLE)
+		return node;
+	for(var i = 0; i< 7; i++){
+		if(node.board[i][5])
+			continue;
+		var nextBoard = copyBoard(node.board);
+		nextBoard[i].push(node.toMove);
+		node.children.push(
+			play({
+				board: nextBoard,
+				children: [],
+				toMove: node.toMove==RED?BLACK:RED
+			}));
+	}
+	node.redWins = node.children.reduce(function(p,node){
+		if(node.state == PLAYABLE){
+			return p+node.redWins;
+		}
+		return p+(node.state==RED?1:0);
+	},0);
+	node.blackWins = node.children.reduce(function(p,node){
+		if(node.state == PLAYABLE){
+			return p+node.blackWins;
+		}
+		return p+(node.state==BLACK?1:0);
+	},0);
+	//console.log("recursing up:" +node.blackWins+", "+node.redWins);
+	//console.log(util.inspect(node.board,{colors: true}));
+	console.log(counter++);
+	return node;
+}
+console.log(util.inspect(play(gameTree),{colors: true}));
+

@@ -1,0 +1,240 @@
+var JSONStream = require('JSONStream');
+var _ = require('lodash');
+var util = require('util');
+//board = 7x6 arr
+
+var  RED = 1, BLACK = 2, PLAYABLE=0, BOARDWIDTH=6;
+
+// columns, with bitfield rows
+var newBoard = function(){
+	return [_.times(BOARDWIDTH, function(){ return 0;}),
+	        _.times(BOARDWIDTH, function(){ return 0;})];
+}
+
+//AND the win to zero out irrelavent bits, 
+// and then and then OR with the NOT of the win, to see if there are holes in the thing you're testing
+var verticalWins = (function(){
+	var toRet = [];
+	for(var i = 0; i < BOARDWIDTH; i++){
+		for(var j = 0; j <= 6-4; j++){
+			var win = [];
+			for(var k = 0; k < 6; k++){
+				win[k] = 0;
+			}
+			win[i] = 0xF<<j;
+			//1111, 
+			toRet.push(win);
+		}
+	}
+	return toRet;
+})();
+
+var horizontalWins = (function(){
+	var toRet = [];
+	for(var j = 0; j < 6; j++){
+		for(var i = 0; i <= BOARDWIDTH-4; i++){
+			var win = [];
+			for(var k = i; k < i+4; k++){
+				win[k] = 0x1<<j; 1
+			}
+			toRet.push(win);
+		}
+	}
+	return toRet;
+})();
+
+
+var diagonalWins = (function(){
+	var toRet = [];
+	for(var i = 0; i <= BOARDWIDTH-4; i++){
+		for(var j = 0; j <= 6-4; j++){
+			var win = [];
+			for(var k = 0; k < 4; k++){
+				win[i+k] = 0x1<<j+k;
+			}
+			toRet.push(win);
+		}
+	}
+	for(var i = 0; i <= BOARDWIDTH-4; i++){
+		for(var j = 5; j >= 3; j--){
+			var win = [];
+			for(var k = 0; k < 4; k++){
+				win[i+k] = 0x1<<j-k;
+			}
+			toRet.push(win);
+		}
+	}
+	return toRet;
+})();
+var allWins = [].concat(horizontalWins, verticalWins, diagonalWins);
+//console.log("allWins made");
+
+
+//AND the win to zero out irrelavent bits, 
+//and then OR with the NOT of the win, to see if there are holes in the thing you're testing
+
+var getState = function(board){
+	outer: for(var j = 0; j < allWins.length; j++){
+		win = allWins[j];
+		var won = RED;
+		for(var i = 0; i< board[0].length; i++){
+			//console.log("checking "+ i);
+			if( ((board[0][i]&win[i]) | (~win[i])) != -1){
+				//console.log('black won')
+				//console.log('board[0][i]:'+board[0][i])
+				//console.log('win[i]:'+win[i])
+				//console.log('(board[0][i]&win[i]):'+(board[0][i]&win[i]))
+				won = BLACK;
+				break;
+			}
+		}
+		if(won == RED){
+			//console.log("red won with: " + win);
+			return RED;
+		}
+		for(var i = 0; i< board[1].length; i++){
+			if( ((board[1][i]&win[i]) | (~win[i])) != -1)
+				continue outer;
+		}
+		return BLACK;
+	}
+	return PLAYABLE;
+}
+
+//console.log(getState([[1,2,4,4,8,16,32],[0,0,32,32,16,32,32]]));
+
+var copyBoard = function(board){
+	return [board[0].slice(),board[1].slice()];
+}
+
+var dropIn = function(i, board, toMove){
+	//figure out where i would land
+	var toLand = (board[0][i]|board[1][i])+1 // should be 1,2,4,8,16,32
+	if(!(toLand == 1 || toLand == 2 || toLand == 4 || toLand == 8 || toLand == 16 || toLand == 32))
+		console.log("you done goofd: "+toLand), process.exit(1);
+
+	board[toMove-1][i] = board[toMove-1][i] | toLand
+}
+
+var printBoard = function(board){
+	for(var i = 6; i-->0;){
+		console.log(
+			_.zip(board[0].map(function(e){
+				return (e&(1<<i))>>>i;
+			}),
+			board[1].map(function(e){
+				return (e&(1<<i))>>>i;
+			})).map(function(c){
+				return c[0]?'r':c[1]?'b':' ';
+			}).join('|'));
+	}
+};
+
+//if we do different color moves first, encode that too
+var getHash = function(board){
+	var hashNum11 = board[0][0] |
+	                board[0][1] << 6 | 
+	                board[0][2] << 12 | 
+	                board[0][3] << 18 | 
+	                board[0][4] << 24;
+	var hashNum12 = board[0][5] //|
+	                //board[0][6] << 6 ;
+
+	var hashNum21 = board[1][0] |
+	                board[1][1] << 6 | 
+	                board[1][2] << 12 | 
+	                board[1][3] << 18 | 
+	                board[1][4] << 24;
+	var hashNum22 = board[1][5] //|
+	               // board[1][6] << 6 ;
+	return (((''+hashNum11)+hashNum12)+hashNum21)+hashNum22;
+}
+
+
+var counter = 0;
+var boardMap = {};
+var play = function(node){
+	console.log(counter++);
+	var hash = getHash(node.board)
+	node.state = getState(node.board);
+	if(boardMap[hash] == undefined)
+		boardMap[hash] = node;
+	else {
+		return boardMap[hash];
+	}
+	if(node.state != PLAYABLE){
+		node.favorability = node.state==RED?1:-1;
+		return node;
+	}
+	for(var i = 0; i< BOARDWIDTH; i++){
+		if((node.board[0][i]|node.board[1][i]) == 63){ // slot is full
+			/*if(counter == 2){
+				printBoard(node.board);
+				console.log('node.board[0][i]:'+node.board[0][i]);
+				console.log('node.board[1][i]:'+node.board[1][i]);
+				console.log('node.board[0][i]|node.board[1][i]:'+node.board[0][i]|node.board[1][i]);
+			}*/
+			continue;}
+		var nextBoard = copyBoard(node.board);
+		dropIn(i,nextBoard,node.toMove);
+		node.children.push(
+			play({
+				board: nextBoard,
+				children: [],
+				toMove: node.toMove==RED?BLACK:RED
+			}));
+	}
+
+	node.favorability = node.children.length == 0?0:
+	node.children.reduce(function(p,child){
+		return (node.toMove==RED?Math.min:Math.max)(p,child.favorability);
+	},node.children[0].favorability);
+	//console.log("recursing up:" +node.blackWins+", "+node.redWins);
+	//console.log(util.inspect(node.board,{colors: true}));
+	return node;
+}
+
+
+var gameTree = {
+	board: newBoard(),
+	state: PLAYABLE,
+	children: [],
+	toMove: RED,
+}
+
+var gameTree = play(gameTree);
+//console.log(util.inspect(gameTree,{colors: true}));
+
+//now play the game
+var board = newBoard();
+
+//I move. pick best child.
+gameTree = gameTree.children.reduce(function(p,c){
+	return p.favorability>c.favorability?p:c;
+});
+board = gameTree.board
+console.log('Computer moved. board looks like this:')
+printBoard(board);
+var playGame = function() {
+	var chunk = process.stdin.read();
+	if (chunk !== null) {
+		column = parseInt(chunk);
+		dropIn(column, board, BLACK);
+		console.log('You moved in column '+column+'. board looks like this:')
+		printBoard(board);
+		//player moved, pair tree
+		for(var i = 0; i < gameTree.children.length; i++){
+			console.log('board '+i+':');
+			printBoard(gameTree.children[i].board);
+		}
+		gameTree = gameTree.children[column];
+		//I move. pick best child.
+		gameTree = gameTree.children.reduce(function(p,c){
+			return p.favorability>c.favorability?p:c;
+		});
+		board = gameTree.board
+		console.log('Computer moved. board looks like this:')
+		printBoard(board);
+	}
+}
+process.stdin.on('readable', playGame);
