@@ -3,7 +3,7 @@ var _ = require('lodash');
 var util = require('util');
 
 //maximizing red. board heights over 32 get fucky.
-var  RED = 1, BLACK = 2, PLAYABLE=0, BOARDWIDTH=7,BOARDHEIGHT=6, S_DEPTH=5, K=4;
+var  RED = 1, BLACK = 2, PLAYABLE=0, BOARDWIDTH=7,BOARDHEIGHT=6, S_DEPTH=3, K=4;
 
 // columns, with bitfield rows
 var newBoard = function(){

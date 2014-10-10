@@ -1,13 +1,13 @@
 #HASH TAG
 import sys
 
-RED = 1;
-BLACK = 2;
-PLAYABLE = 0;
-BOARDWIDTH=7;
-BOARDHEIGHT=6;
-K=4;
-S_DEPTH=4;
+RED = 1
+BLACK = 2
+PLAYABLE = 0
+BOARDWIDTH=7
+BOARDHEIGHT=6
+K=4
+S_DEPTH=3
 
 #boards are index by rows going 0 to right most then columns from 0 to top
 def newBoard():
@@ -167,16 +167,22 @@ def play(node,depth):
 def main():
 	#print allWins
 	board = newBoard();
+	FIRST = BLACK;
 	while True:
-		gameTree = play({ "board": board, "toMove": RED },S_DEPTH);
-		#computer picks best move
-		best = gameTree["children"][0]
-		for child in gameTree["children"]:
-			if child["favorability"] > best["favorability"]:
-				best = child
-		board = best["board"]
-		print "Computer moved:"
+		if FIRST != BLACK:
+			gameTree = play({ "board": board, "toMove": RED },S_DEPTH);
+			#computer picks best move
+			best = gameTree["children"][0]
+			for child in gameTree["children"]:
+				if child["favorability"] > best["favorability"]:
+					best = child
+			board = best["board"]
+			print "Computer moved:"
+		FIRST = RED;
 		printBoard(board)
+		if getState(board) != PLAYABLE :
+			print ("Red" if getState(board) == RED else "Black" ) + " won."
+			return 0
 		print "Enter column to drop your piece in: (1 indexed)"
 		column = 0
 		while column == 0:
@@ -187,6 +193,9 @@ def main():
 				column = 0
 		dropIn(column-1, board, BLACK);
 		printBoard(board)
+		if getState(board) != PLAYABLE :
+			print ("Red" if getState(board) == RED else "Black" ) + " won."
+			return 0
 
 	if False: #tests to make sure stuffs not fucked up
 		print getState([[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]) == 0
