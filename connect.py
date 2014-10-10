@@ -82,7 +82,7 @@ def dropIn(i, board, toMove):
 	height = 0
 	for cell in board[i]:
 		if cell == 0:
-			break
+			break #We found and open space
 		height=height+1
 	board[i][height] = toMove
 
@@ -96,10 +96,18 @@ def printBoard(board):
 
 
 def heuristic(board):
-	#one side only
-	#console.log("huering board: ")
-	#printBoard(board);
 	score = 0
+	#compute red's  "goodness" or advantage
+	for win in allWins:
+		filled = 0;
+		for cell in win:
+			if board[cell[0]][cell[1]] == RED:
+				filled = filled+1
+			elif board[cell[0]][cell[1]] == BLACK:
+				filled = -K #if black is blocking, don't fuck with the score
+		if filled > 0 :
+			score = score + filled*filled*filled*filled / (K*1.0)#force floating point?
+	#subtract good positions for black
 	for win in allWins:
 		filled = 0;
 		for cell in win:
@@ -109,29 +117,7 @@ def heuristic(board):
 				filled = -K
 		if filled > 0 :
 			score = score + filled*filled*filled*filled / (K*1.0)#force floating point?
-		zerodBoard = _.zip(win,board[0]).map(andZipper);
-		holes = _.zip(win,zerodBoard).map(xorZipper);
-		//score = (winlen-#holes) / winlen
-		var filled = (K-holes.reduce(function(p,c){return p+oneBits(c);},0))
-		score = filled*filled*filled*filled / K;
-		if(_.zip(holes,board[1]).map(andZipper).reduce(function(p,c){return p&&(c==0);},true)){
-			return p+score;
-		}
-		return p;
-	},allWins,0) 
-	- allWins.reduce(function(p,win){
-		zerodBoard = _.zip(win,board[1]).map(andZipper);
-		holes = _.zip(win,zerodBoard).map(xorZipper);
-		//score = (winlen-#holes) / winlen
-		var filled = (K-holes.reduce(function(p,c){return p+oneBits(c);},0))
-		score = filled*filled*filled*filled / K;
-		if(_.zip(holes,board[0]).map(andZipper).reduce(function(p,c){return p&&(c==0);},true)){
-			return p+score;
-		}
-		return p;
-	},0);
-	//console.log(ans);
-	return ans;
+	return score;
 }
 
 
@@ -157,4 +143,5 @@ def main():
 		dropIn(2,copyBoard(board),BLACK)
 		print board == [[1, 1, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0], [2, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]]
 
+		print heuristic([[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]])
 if __name__ == "__main__": main()
