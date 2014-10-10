@@ -7,7 +7,7 @@ PLAYABLE = 0;
 BOARDWIDTH=7;
 BOARDHEIGHT=6;
 K=4;
-S_DEPTH=5;
+S_DEPTH=4;
 
 #boards are index by rows going 0 to right most then columns from 0 to top
 def newBoard():
