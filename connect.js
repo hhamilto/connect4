@@ -1,4 +1,3 @@
-var JSONStream = require('JSONStream');
 var _ = require('lodash');
 var util = require('util');
 

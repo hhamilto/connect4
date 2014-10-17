@@ -1,0 +1,8 @@
+{
+  "name": "ConnectK",
+  "description": "Play connect K against and AI on an n by m field",
+  "repository": "https://github.com/hhamilto/connect4",
+  "dependencies": {
+    "lodash" : ""
+  }
+}
